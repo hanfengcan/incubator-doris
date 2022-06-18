@@ -41,7 +41,7 @@ import java.util.List;
  * them unique ids..
  */
 public class DescriptorTable {
-    private final static Logger LOG = LogManager.getLogger(DescriptorTable.class);
+    private static final Logger LOG = LogManager.getLogger(DescriptorTable.class);
 
     private final HashMap<TupleId, TupleDescriptor> tupleDescs = new HashMap<TupleId, TupleDescriptor>();
     // List of referenced tables with no associated TupleDescriptor to ship to the BE.
@@ -74,6 +74,16 @@ public class DescriptorTable {
     }
 
     /**
+     * Used by new optimizer.
+     */
+    public SlotDescriptor addSlotDescriptor(TupleDescriptor d, int id) {
+        SlotDescriptor result = new SlotDescriptor(new SlotId(id), d);
+        d.addSlot(result);
+        slotDescs.put(result.getId(), result);
+        return result;
+    }
+
+    /**
      * Create copy of src with new id. The returned descriptor has its mem layout
      * computed.
      */
@@ -82,7 +92,7 @@ public class DescriptorTable {
         tupleDescs.put(d.getId(), d);
         // create copies of slots
         TupleDescriptor src = tupleDescs.get(srcId);
-        for (SlotDescriptor slot: src.getSlots()) {
+        for (SlotDescriptor slot : src.getSlots()) {
             copySlotDescriptor(d, slot);
         }
         d.computeStatAndMemLayout();
@@ -119,7 +129,7 @@ public class DescriptorTable {
      * Marks all slots in list as materialized.
      */
     public void markSlotsMaterialized(List<SlotId> ids) {
-        for (SlotId id: ids) {
+        for (SlotId id : ids) {
             getSlotDesc(id).setIsMaterialized(true);
         }
     }

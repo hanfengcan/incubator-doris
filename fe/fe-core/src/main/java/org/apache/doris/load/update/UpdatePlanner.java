@@ -113,11 +113,7 @@ public class UpdatePlanner extends Planner {
             slotDesc.setIsMaterialized(true);
             slotDesc.setType(col.getType());
             slotDesc.setColumn(col);
-            if (col.isAllowNull()) {
-                slotDesc.setIsNullable(true);
-            } else {
-                slotDesc.setIsNullable(false);
-            }
+            slotDesc.setIsNullable(col.isAllowNull());
         }
         targetTupleDesc.computeStatAndMemLayout();
         return targetTupleDesc;
@@ -162,8 +158,8 @@ public class UpdatePlanner extends Planner {
         for (int i = 0; i < targetTable.getFullSchema().size(); i++) {
             Column column = targetTable.getFullSchema().get(i);
             // pay attention to case ignore of column name
-            String originColumnName = (column.getName().startsWith(SchemaChangeHandler.SHADOW_NAME_PRFIX) ?
-                    column.getName().substring(SchemaChangeHandler.SHADOW_NAME_PRFIX.length()) : column.getName())
+            String originColumnName = (column.getName().startsWith(SchemaChangeHandler.SHADOW_NAME_PRFIX)
+                    ? column.getName().substring(SchemaChangeHandler.SHADOW_NAME_PRFIX.length()) : column.getName())
                     .toLowerCase();
             Expr setExpr = columnNameToSetExpr.get(originColumnName);
             SlotDescriptor srcSlotDesc = columnNameToSrcSlotDesc.get(originColumnName);

@@ -40,7 +40,7 @@ import java.util.Set;
  * particular input row (materialize all row slots)
  */
 public class SortInfo {
-    private final static Logger LOG = LogManager.getLogger(SortInfo.class);
+    private static final Logger LOG = LogManager.getLogger(SortInfo.class);
     // All ordering exprs with cost greater than this will be materialized. Since we don't
     // currently have any information about actual function costs, this value is intended to
     // ensure that all expensive functions will be materialized while still leaving simple
@@ -74,6 +74,19 @@ public class SortInfo {
     }
 
     /**
+     * Used by new optimizer.
+     */
+    public SortInfo(List<Expr> orderingExprs,
+                    List<Boolean> isAscOrder,
+                    List<Boolean> nullsFirstParams,
+                    TupleDescriptor sortTupleDesc) {
+        this.orderingExprs = orderingExprs;
+        this.isAscOrder = isAscOrder;
+        this.nullsFirstParams = nullsFirstParams;
+        this.sortTupleDesc = sortTupleDesc;
+    }
+
+    /**
      * C'tor for cloning.
      */
     private SortInfo(SortInfo other) {
@@ -103,12 +116,29 @@ public class SortInfo {
         }
     }
 
-    public List<Expr> getOrderingExprs() { return orderingExprs; }
-    public List<Boolean> getIsAscOrder() { return isAscOrder; }
-    public List<Boolean> getNullsFirstParams() { return nullsFirstParams; }
-    public List<Expr> getMaterializedOrderingExprs() { return materializedOrderingExprs; }
-    public List<Expr> getSortTupleSlotExprs() { return sortTupleSlotExprs; }
-    public TupleDescriptor getSortTupleDescriptor() { return sortTupleDesc; }
+    public List<Expr> getOrderingExprs() {
+        return orderingExprs;
+    }
+
+    public List<Boolean> getIsAscOrder() {
+        return isAscOrder;
+    }
+
+    public List<Boolean> getNullsFirstParams() {
+        return nullsFirstParams;
+    }
+
+    public List<Expr> getMaterializedOrderingExprs() {
+        return materializedOrderingExprs;
+    }
+
+    public List<Expr> getSortTupleSlotExprs() {
+        return sortTupleSlotExprs;
+    }
+
+    public TupleDescriptor getSortTupleDescriptor() {
+        return sortTupleDesc;
+    }
 
     /**
      * Gets the list of booleans indicating whether nulls come first or last, independent
@@ -154,13 +184,15 @@ public class SortInfo {
      * Asserts that all ordering exprs are bound by the sort tuple.
      */
     public void checkConsistency() {
-        for (Expr orderingExpr: orderingExprs) {
+        for (Expr orderingExpr : orderingExprs) {
             Preconditions.checkState(orderingExpr.isBound(sortTupleDesc.getId()));
         }
     }
 
     @Override
-    public SortInfo clone() { return new SortInfo(this); }
+    public SortInfo clone() {
+        return new SortInfo(this);
+    }
 
     /**
      * Create a tuple descriptor for the single tuple that is materialized, sorted, and
@@ -195,7 +227,7 @@ public class SortInfo {
                 Predicates.instanceOf(SlotRef.class), sourceSlots);
         TreeNode.collect(Expr.substituteList(orderingExprs, substOrderBy, analyzer, false),
                 Predicates.instanceOf(SlotRef.class), sourceSlots);
-        for (SlotRef origSlotRef: sourceSlots) {
+        for (SlotRef origSlotRef : sourceSlots) {
             // Don't rematerialize slots that are already in the sort tuple.
             if (origSlotRef.getDesc().getParent().getId() != sortTupleDesc.getId()) {
                 SlotDescriptor origSlotDesc = origSlotRef.getDesc();
@@ -232,26 +264,12 @@ public class SortInfo {
             TupleDescriptor sortTupleDesc, Analyzer analyzer) {
         ExprSubstitutionMap substOrderBy = new ExprSubstitutionMap();
         for (Expr origOrderingExpr : orderingExprs) {
-            // TODO(zc): support materialized order exprs
-            // if (!origOrderingExpr.hasCost()
-            //         || origOrderingExpr.getCost() > SORT_MATERIALIZATION_COST_THRESHOLD
-            //         || origOrderingExpr.contains(Expr.IS_NONDETERMINISTIC_BUILTIN_FN_PREDICATE)
-            //         || origOrderingExpr.contains(Expr.IS_UDF_PREDICATE)) {
-            //     SlotDescriptor materializedDesc = analyzer.addSlotDescriptor(sortTupleDesc);
-            //     materializedDesc.initFromExpr(origOrderingExpr);
-            //     materializedDesc.setIsMaterialized(true);
-            //     SlotRef materializedRef = new SlotRef(materializedDesc);
-            //     substOrderBy.put(origOrderingExpr, materializedRef);
-            //     materializedOrderingExprs_.add(origOrderingExpr);
-            // }
-            {
-                SlotDescriptor materializedDesc = analyzer.addSlotDescriptor(sortTupleDesc);
-                materializedDesc.initFromExpr(origOrderingExpr);
-                materializedDesc.setIsMaterialized(true);
-                SlotRef materializedRef = new SlotRef(materializedDesc);
-                substOrderBy.put(origOrderingExpr, materializedRef);
-                materializedOrderingExprs.add(origOrderingExpr);
-            }
+            SlotDescriptor materializedDesc = analyzer.addSlotDescriptor(sortTupleDesc);
+            materializedDesc.initFromExpr(origOrderingExpr);
+            materializedDesc.setIsMaterialized(true);
+            SlotRef materializedRef = new SlotRef(materializedDesc);
+            substOrderBy.put(origOrderingExpr, materializedRef);
+            materializedOrderingExprs.add(origOrderingExpr);
         }
         return substOrderBy;
     }

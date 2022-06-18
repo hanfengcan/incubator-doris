@@ -175,7 +175,6 @@ if [[ ${HELP} -eq 1 ]]; then
     usage
     exit
 fi
-
 # build thirdparty libraries if necessary
 if [[ ! -f ${DORIS_THIRDPARTY}/installed/lib/libbacktrace.a ]]; then
     echo "Thirdparty libraries need to be build ..."
@@ -212,6 +211,9 @@ fi
 if [[ -z ${STRIP_DEBUG_INFO} ]]; then
     STRIP_DEBUG_INFO=OFF
 fi
+if [[ -z ${USE_MEM_TRACKER} ]]; then
+    USE_MEM_TRACKER=ON
+fi
 
 if [[ -z ${USE_DWARF} ]]; then
     USE_DWARF=OFF
@@ -235,6 +237,7 @@ echo "Get params:
     USE_LLD             -- $USE_LLD
     USE_DWARF           -- $USE_DWARF
     STRIP_DEBUG_INFO    -- $STRIP_DEBUG_INFO
+    USE_MEM_TRACKER     -- $USE_MEM_TRACKER
 "
 
 # Clean and build generated code
@@ -296,8 +299,9 @@ if [ ${BUILD_BE} -eq 1 ] ; then
             -DBUILD_JAVA_UDF=${BUILD_JAVA_UDF} \
             -DSTRIP_DEBUG_INFO=${STRIP_DEBUG_INFO} \
             -DUSE_DWARF=${USE_DWARF} \
+            -DUSE_MEM_TRACKER=${USE_MEM_TRACKER} \
             -DUSE_AVX2=${USE_AVX2} \
-            -DGLIBC_COMPATIBILITY=${GLIBC_COMPATIBILITY} ../
+            -DGLIBC_COMPATIBILITY=${GLIBC_COMPATIBILITY} ${DORIS_HOME}/be/
     ${BUILD_SYSTEM} -j ${PARALLEL}
     ${BUILD_SYSTEM} install
     cd ${DORIS_HOME}

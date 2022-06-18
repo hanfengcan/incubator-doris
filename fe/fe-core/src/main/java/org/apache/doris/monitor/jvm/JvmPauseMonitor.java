@@ -132,13 +132,12 @@ public class JvmPauseMonitor {
             GcTimes diff = gcTimesAfterSleep.get(name).subtract(
                     gcTimesBeforeSleep.get(name));
             if (diff.gcCount != 0) {
-                gcDiffs.add("GC pool '" + name + "' had collection(s): " +
-                        diff.toString());
+                gcDiffs.add("GC pool '" + name + "' had collection(s): " + diff);
             }
         }
 
-        String ret = "Detected pause in JVM or host machine (eg GC): " +
-                "pause of approximately " + extraSleepTime + "ms\n";
+        String ret = "Detected pause in JVM or host machine (eg GC): "
+                + "pause of approximately " + extraSleepTime + "ms\n";
         if (gcDiffs.isEmpty()) {
             ret += "No GCs detected";
         } else {
@@ -216,8 +215,8 @@ public class JvmPauseMonitor {
                 totalGcExtraSleepTime += extraSleepTime;
                 gcTimesBeforeSleep = gcTimesAfterSleep;
 
-                if (deadlockCheckIntervalS > 0 &&
-                        timeSinceDeadlockCheck.elapsed(TimeUnit.SECONDS) >= deadlockCheckIntervalS) {
+                if (deadlockCheckIntervalS > 0
+                        && timeSinceDeadlockCheck.elapsed(TimeUnit.SECONDS) >= deadlockCheckIntervalS) {
                     checkForDeadlocks();
                     timeSinceDeadlockCheck.reset().start();
                 }
@@ -235,9 +234,9 @@ public class JvmPauseMonitor {
          */
         private void checkForDeadlocks() {
             ThreadMXBean threadMx = ManagementFactory.getThreadMXBean();
-            long deadlockedTids[] = threadMx.findDeadlockedThreads();
+            long[] deadlockedTids = threadMx.findDeadlockedThreads();
             if (deadlockedTids != null) {
-                ThreadInfo deadlockedThreads[] =
+                ThreadInfo[] deadlockedThreads =
                         threadMx.getThreadInfo(deadlockedTids, true, true);
                 // Log diagnostics with error before aborting the process with a FATAL log.
                 LOG.error("Found " + deadlockedThreads.length + " threads in deadlock: ");

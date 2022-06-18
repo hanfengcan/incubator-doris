@@ -68,7 +68,8 @@ public class ShowStreamLoadStmt extends ShowStmt {
             .add("StartTime").add("FinishTime")
             .build();
 
-    public ShowStreamLoadStmt(String db, Expr labelExpr, List<OrderByElement> orderByElements, LimitElement limitElement) {
+    public ShowStreamLoadStmt(String db, Expr labelExpr,
+            List<OrderByElement> orderByElements, LimitElement limitElement) {
         this.dbName = db;
         this.whereClause = labelExpr;
         this.orderByElements = orderByElements;
@@ -93,6 +94,7 @@ public class ShowStreamLoadStmt extends ShowStmt {
         try {
             index = analyzeColumn("FinishTime");
         } catch (AnalysisException e) {
+            // CHECKSTYLE IGNORE THIS LINE
         }
         OrderByPair orderByPair = new OrderByPair(index, false);
         orderByFinishTime.add(orderByPair);
@@ -126,6 +128,7 @@ public class ShowStreamLoadStmt extends ShowStmt {
         try {
             state = StreamLoadState.valueOf(stateValue);
         } catch (Exception e) {
+            // CHECKSTYLE IGNORE THIS LINE
         }
         return state;
     }

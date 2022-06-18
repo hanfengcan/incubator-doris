@@ -19,7 +19,6 @@
 
 #include <fmt/format.h>
 
-#include "common/logging.h"
 #include "common/utils.h"
 #include "exec/exec_node.h"
 #include "exprs/expr_context.h"
@@ -130,11 +129,13 @@ Status BaseScanner::init_expr_ctxes() {
     // preceding filter expr should be initialized by using `_row_desc`, which is the source row descriptor
     if (!_pre_filter_texprs.empty()) {
         if (_state->enable_vectorized_exec()) {
-            RETURN_IF_ERROR(vectorized::VExpr::create_expr_trees(
-                    _state->obj_pool(), _pre_filter_texprs, &_vpre_filter_ctxs));
-            RETURN_IF_ERROR(vectorized::VExpr::prepare(_vpre_filter_ctxs, _state, *_row_desc,
-                                                       _mem_tracker));
-            RETURN_IF_ERROR(vectorized::VExpr::open(_vpre_filter_ctxs, _state));
+            // for vectorized, preceding filter exprs should be compounded to one passed from fe.
+            DCHECK(_pre_filter_texprs.size() == 1);
+            _vpre_filter_ctx_ptr.reset(new doris::vectorized::VExprContext*);
+            RETURN_IF_ERROR(vectorized::VExpr::create_expr_tree(
+                    _state->obj_pool(), _pre_filter_texprs[0], _vpre_filter_ctx_ptr.get()));
+            RETURN_IF_ERROR((*_vpre_filter_ctx_ptr)->prepare(_state, *_row_desc, _mem_tracker));
+            RETURN_IF_ERROR((*_vpre_filter_ctx_ptr)->open(_state));
         } else {
             RETURN_IF_ERROR(Expr::create_expr_trees(_state->obj_pool(), _pre_filter_texprs,
                                                     &_pre_filter_ctxs));
@@ -302,14 +303,10 @@ Status BaseScanner::_fill_dest_tuple(Tuple* dest_tuple, MemPool* mem_pool) {
 Status BaseScanner::_filter_src_block() {
     auto origin_column_num = _src_block.columns();
     // filter block
-    if (!_vpre_filter_ctxs.empty()) {
-        for (auto _vpre_filter_ctx : _vpre_filter_ctxs) {
-            auto old_rows = _src_block.rows();
-            RETURN_IF_ERROR(vectorized::VExprContext::filter_block(_vpre_filter_ctx, &_src_block,
-                                                                   origin_column_num));
-            _counter->num_rows_unselected += old_rows - _src_block.rows();
-        }
-    }
+    auto old_rows = _src_block.rows();
+    RETURN_IF_ERROR(vectorized::VExprContext::filter_block(_vpre_filter_ctx_ptr, &_src_block,
+                                                           origin_column_num));
+    _counter->num_rows_unselected += old_rows - _src_block.rows();
     return Status::OK();
 }
 
@@ -331,6 +328,7 @@ Status BaseScanner::_materialize_dest_block(vectorized::Block* dest_block) {
         // PT1 => dest primitive type
         RETURN_IF_ERROR(ctx->execute(&_src_block, &result_column_id));
         auto column_ptr = _src_block.get_by_position(result_column_id).column;
+        DCHECK(column_ptr != nullptr);
 
         // because of src_slot_desc is always be nullable, so the column_ptr after do dest_expr
         // is likely to be nullable
@@ -453,8 +451,8 @@ void BaseScanner::close() {
         Expr::close(_pre_filter_ctxs, _state);
     }
 
-    if (_state->enable_vectorized_exec() && !_vpre_filter_ctxs.empty()) {
-        vectorized::VExpr::close(_vpre_filter_ctxs, _state);
+    if (_vpre_filter_ctx_ptr) {
+        (*_vpre_filter_ctx_ptr)->close(_state);
     }
 }
 

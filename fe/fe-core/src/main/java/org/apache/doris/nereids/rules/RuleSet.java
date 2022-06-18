@@ -22,7 +22,6 @@ import org.apache.doris.nereids.rules.exploration.join.JoinCommutative;
 import org.apache.doris.nereids.rules.exploration.join.JoinLeftAssociative;
 import org.apache.doris.nereids.rules.implementation.LogicalJoinToHashJoin;
 import org.apache.doris.nereids.trees.TreeNode;
-import org.apache.doris.nereids.trees.expressions.Expression;
 import org.apache.doris.nereids.trees.plans.Plan;
 
 import com.google.common.collect.ImmutableList;
@@ -63,11 +62,7 @@ public class RuleSet {
         return new RuleFactories();
     }
 
-    private static RuleFactories<Expression> expressionRuleFactories() {
-        return new RuleFactories();
-    }
-
-    private static class RuleFactories<TYPE extends TreeNode> {
+    private static class RuleFactories<TYPE extends TreeNode<TYPE>> {
         final Builder<Rule<TYPE>> rules = ImmutableList.builder();
 
         public RuleFactories<TYPE> add(RuleFactory<TYPE> ruleFactory) {

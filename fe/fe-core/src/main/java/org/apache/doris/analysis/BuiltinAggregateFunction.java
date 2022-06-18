@@ -20,7 +20,6 @@ package org.apache.doris.analysis;
 import org.apache.doris.catalog.Function;
 import org.apache.doris.catalog.ScalarType;
 import org.apache.doris.catalog.Type;
-import org.apache.doris.common.AnalysisException;
 import org.apache.doris.thrift.TAggregateFunction;
 import org.apache.doris.thrift.TAggregationOp;
 import org.apache.doris.thrift.TFunction;
@@ -41,6 +40,7 @@ public class BuiltinAggregateFunction extends Function {
     public boolean isAnalyticFn() {
         return isAnalyticFn;
     }
+
     // TODO: this is not used yet until the planner understand this.
     private org.apache.doris.catalog.Type intermediateType;
     private boolean reqIntermediateTuple = false;
@@ -50,10 +50,8 @@ public class BuiltinAggregateFunction extends Function {
     }
 
     public BuiltinAggregateFunction(Operator op, ArrayList<Type> argTypes,
-      Type retType, org.apache.doris.catalog.Type intermediateType, boolean isAnalyticFn)
-      throws AnalysisException {
-        super(FunctionName.createBuiltinName(op.toString()), argTypes,
-          retType, false);
+            Type retType, org.apache.doris.catalog.Type intermediateType, boolean isAnalyticFn) {
+        super(FunctionName.createBuiltinName(op.toString()), argTypes, retType, false);
         Preconditions.checkState(intermediateType != null);
         Preconditions.checkState(op != null);
         // may be no need to analyze
@@ -120,7 +118,8 @@ public class BuiltinAggregateFunction extends Function {
         DENSE_RANK("DENSE_RANK", TAggregationOp.DENSE_RANK, null),
         ROW_NUMBER("ROW_NUMBER", TAggregationOp.ROW_NUMBER, null),
         LEAD("LEAD", TAggregationOp.LEAD, null),
-        FIRST_VALUE_REWRITE("FIRST_VALUE_REWRITE", null, null);
+        FIRST_VALUE_REWRITE("FIRST_VALUE_REWRITE", null, null),
+        NTILE("NTILE", TAggregationOp.NTILE, null);
 
         private final String         description;
         private final TAggregationOp thriftOp;
@@ -128,8 +127,8 @@ public class BuiltinAggregateFunction extends Function {
         // The intermediate type for this function if it is constant regardless of
         // input type. Set to null if it can only be determined during analysis.
         private final org.apache.doris.catalog.Type intermediateType;
-        private Operator(String description, TAggregationOp thriftOp,
-          org.apache.doris.catalog.Type intermediateType) {
+        Operator(String description, TAggregationOp thriftOp,
+                org.apache.doris.catalog.Type intermediateType) {
             this.description = description;
             this.thriftOp = thriftOp;
             this.intermediateType = intermediateType;

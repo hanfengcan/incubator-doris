@@ -35,11 +35,11 @@ import org.apache.logging.log4j.Logger;
  * parameters and state such as plan-node and plan-fragment id generators.
  */
 public class PlannerContext {
-    private final static Logger LOG = LogManager.getLogger(PlannerContext.class);
+    private static final Logger LOG = LogManager.getLogger(PlannerContext.class);
 
     // Estimate of the overhead imposed by storing data in a hash tbl;
     // used for determining whether a broadcast join is feasible.
-    public final static double HASH_TBL_SPACE_OVERHEAD = 1.1;
+    public static final double HASH_TBL_SPACE_OVERHEAD = 1.1;
 
     private final IdGenerator<PlanNodeId> nodeIdGenerator = PlanNodeId.createGenerator();
     private final IdGenerator<PlanFragmentId> fragmentIdGenerator =
@@ -59,12 +59,31 @@ public class PlannerContext {
         this.statement = statement;
     }
 
-    public QueryStmt getQueryStmt() { return queryStmt; }
-    public TQueryOptions getQueryOptions() { return queryOptions; } // getRootAnalyzer().getQueryOptions(); }
-    public Analyzer getRootAnalyzer() { return analyzer; } // analysisResult_.getAnalyzer(); }
-    public boolean isSingleNodeExec() { return getQueryOptions().num_nodes == 1; }
-    public PlanNodeId getNextNodeId() { return nodeIdGenerator.getNextId(); }
-    public PlanFragmentId getNextFragmentId() { return fragmentIdGenerator.getNextId(); }
+    public QueryStmt getQueryStmt() {
+        return queryStmt;
+    }
 
-    public boolean isInsert() { return statement instanceof InsertStmt; }
+    public TQueryOptions getQueryOptions() {
+        return queryOptions;
+    } // getRootAnalyzer().getQueryOptions(); }
+
+    public Analyzer getRootAnalyzer() {
+        return analyzer;
+    } // analysisResult_.getAnalyzer(); }
+
+    public boolean isSingleNodeExec() {
+        return getQueryOptions().num_nodes == 1;
+    }
+
+    public PlanNodeId getNextNodeId() {
+        return nodeIdGenerator.getNextId();
+    }
+
+    public PlanFragmentId getNextFragmentId() {
+        return fragmentIdGenerator.getNextId();
+    }
+
+    public boolean isInsert() {
+        return statement instanceof InsertStmt;
+    }
 }

@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
  * analysis of the ORDER BY and LIMIT clauses.
  */
 public abstract class QueryStmt extends StatementBase {
-    private final static Logger LOG = LogManager.getLogger(QueryStmt.class);
+    private static final Logger LOG = LogManager.getLogger(QueryStmt.class);
 
     /////////////////////////////////////////
     // BEGIN: Members that need to be reset()
@@ -186,8 +186,8 @@ public abstract class QueryStmt extends StatementBase {
     private void analyzeLimit(Analyzer analyzer) throws AnalysisException {
         // TODO chenhao
         if (limitElement.getOffset() > 0 && !hasOrderByClause()) {
-            throw new AnalysisException("OFFSET requires an ORDER BY clause: " +
-                    limitElement.toSql().trim());
+            throw new AnalysisException("OFFSET requires an ORDER BY clause: "
+                    + limitElement.toSql().trim());
         }
         limitElement.analyze(analyzer);
     }
@@ -241,8 +241,8 @@ public abstract class QueryStmt extends StatementBase {
             }*/
             if (correlatedRef != null && absoluteRef != null) {
                 throw new AnalysisException(String.format(
-                        "Nested query is illegal because it contains a table reference '%s' " +
-                                "correlated with an outer block as well as an uncorrelated one '%s':\n%s",
+                        "Nested query is illegal because it contains a table reference '%s' "
+                                + "correlated with an outer block as well as an uncorrelated one '%s':\n%s",
                         correlatedRef.tableRefToSql(), absoluteRef.tableRefToSql(), toSql()));
             }
             tblRefIds.add(tblRef.getId());
@@ -314,8 +314,8 @@ public abstract class QueryStmt extends StatementBase {
         }
 
         if (!analyzer.isRootAnalyzer() && hasOffset() && !hasLimit()) {
-            throw new AnalysisException("Order-by with offset without limit not supported" +
-                    " in nested queries.");
+            throw new AnalysisException("Order-by with offset without limit not supported"
+                    + " in nested queries.");
         }
 
         sortInfo = new SortInfo(orderingExprs, isAscOrder, nullsFirstParams);
@@ -455,7 +455,8 @@ public abstract class QueryStmt extends StatementBase {
         return resultExprs.get((int) pos - 1).clone();
     }
 
-    public void getWithClauseTables(Analyzer analyzer, Map<Long, Table> tableMap, Set<String> parentViewNameSet) throws AnalysisException {
+    public void getWithClauseTables(Analyzer analyzer, Map<Long, Table> tableMap,
+            Set<String> parentViewNameSet) throws AnalysisException {
         if (withClause != null) {
             withClause.getTables(analyzer, tableMap, parentViewNameSet);
         }
@@ -532,8 +533,10 @@ public abstract class QueryStmt extends StatementBase {
     //                "select a.siteid, b.citycode, a.siteid from (select siteid, citycode from tmp) a " +
     //                "left join (select siteid, citycode from tmp) b on a.siteid = b.siteid;";
     // tmp in child stmt "(select siteid, citycode from tmp)" do not contain with_Clause
-    // so need to check is view name by parentViewNameSet. issue link: https://github.com/apache/incubator-doris/issues/4598
-    public abstract void getTables(Analyzer analyzer, Map<Long, Table> tables, Set<String> parentViewNameSet) throws AnalysisException;
+    // so need to check is view name by parentViewNameSet.
+    // issue link: https://github.com/apache/incubator-doris/issues/4598
+    public abstract void getTables(Analyzer analyzer, Map<Long, Table> tables, Set<String> parentViewNameSet)
+            throws AnalysisException;
 
     // get TableRefs in this query, including physical TableRefs of this statement and
     // nested statements of inline views and with_Clause.

@@ -30,7 +30,7 @@ public class ExecuteEnvTest {
     @Test
     public void testGetInstance() {
         Set<Thread> tds = new HashSet<Thread>();
-        for (int i = 0 ;i < threadMaxNum; i++) {
+        for (int i = 0; i < threadMaxNum; i++) {
             Thread td = new Thread(new MyTest(i, oids));
             tds.add(td);
             td.start();
@@ -44,24 +44,24 @@ public class ExecuteEnvTest {
             }
         }
         for (int i = 1; i < threadMaxNum; i++) {
-            Assert.assertEquals(oids[i-1], oids[i]);
+            Assert.assertEquals(oids[i - 1], oids[i]);
         }
     }
-}
 
-class MyTest implements Runnable {
-    public int index;
-    public int[] oids;
+    static class MyTest implements Runnable {
+        public int index;
+        public int[] oids;
 
-    MyTest(int index, int[] oids) {
-        this.index = index;
-        this.oids = oids;
-    }
+        MyTest(int index, int[] oids) {
+            this.index = index;
+            this.oids = oids;
+        }
 
-    @Override
-    public void run() {
-        ExecuteEnv instance = ExecuteEnv.getInstance();
-        int oid = instance.hashCode();
-        oids[index] = oid;
+        @Override
+        public void run() {
+            ExecuteEnv instance = ExecuteEnv.getInstance();
+            int oid = instance.hashCode();
+            oids[index] = oid;
+        }
     }
 }

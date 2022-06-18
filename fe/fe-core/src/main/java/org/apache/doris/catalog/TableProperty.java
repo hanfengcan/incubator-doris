@@ -25,6 +25,7 @@ import org.apache.doris.common.io.Writable;
 import org.apache.doris.common.util.PropertyAnalyzer;
 import org.apache.doris.persist.OperationType;
 import org.apache.doris.persist.gson.GsonUtils;
+import org.apache.doris.thrift.TCompressionType;
 import org.apache.doris.thrift.TStorageFormat;
 
 import com.google.common.base.Strings;
@@ -66,6 +67,8 @@ public class TableProperty implements Writable {
      * This property should be set when creating the table, and can only be changed to V2 using Alter Table stmt.
      */
     private TStorageFormat storageFormat = TStorageFormat.DEFAULT;
+
+    private TCompressionType compressionType = TCompressionType.LZ4F;
 
     private DataSortInfo dataSortInfo = new DataSortInfo();
 
@@ -144,6 +147,12 @@ public class TableProperty implements Writable {
             }
         }
         dataSortInfo = new DataSortInfo(dataSortInfoProperties);
+        return this;
+    }
+
+    public TableProperty buildCompressionType() {
+        compressionType = TCompressionType.valueOf(properties.getOrDefault(PropertyAnalyzer.PROPERTIES_COMPRESSION,
+                TCompressionType.LZ4F.name()));
         return this;
     }
 
@@ -227,6 +236,10 @@ public class TableProperty implements Writable {
         return remoteStorageResource;
     }
 
+    public TCompressionType getCompressionType() {
+        return compressionType;
+    }
+
     public void buildReplicaAllocation() {
         try {
             // Must copy the properties because "analyzeReplicaAllocation" with remove the property
@@ -251,7 +264,8 @@ public class TableProperty implements Writable {
                 .buildInMemory()
                 .buildStorageFormat()
                 .buildDataSortInfo()
-                .buildRemoteStorageResource();
+                .buildRemoteStorageResource()
+                .buildCompressionType();
         if (Catalog.getCurrentCatalogJournalVersion() < FeMetaVersion.VERSION_105) {
             // get replica num from property map and create replica allocation
             String repNum = tableProperty.properties.remove(PropertyAnalyzer.PROPERTIES_REPLICATION_NUM);
@@ -269,9 +283,11 @@ public class TableProperty implements Writable {
         return tableProperty;
     }
 
-    // For some historical reason, both "dynamic_partition.replication_num" and "dynamic_partition.replication_allocation"
+    // For some historical reason,
+    // both "dynamic_partition.replication_num" and "dynamic_partition.replication_allocation"
     // may be exist in "properties". we need remove the "dynamic_partition.replication_num", or it will always replace
-    // the "dynamic_partition.replication_allocation", result in unable to set "dynamic_partition.replication_allocation".
+    // the "dynamic_partition.replication_allocation",
+    // result in unable to set "dynamic_partition.replication_allocation".
     private void removeDuplicateReplicaNumProperty() {
         if (properties.containsKey(DynamicPartitionProperty.REPLICATION_NUM)
                 && properties.containsKey(DynamicPartitionProperty.REPLICATION_ALLOCATION)) {

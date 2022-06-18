@@ -57,7 +57,7 @@ public enum PrimitiveType {
 
     ARRAY("ARRAY", 24, TPrimitiveType.ARRAY),
     MAP("MAP", 24, TPrimitiveType.MAP),
-    STRUCT("MAP", 24, TPrimitiveType.STRUCT),
+    STRUCT("STRUCT", 24, TPrimitiveType.STRUCT),
     STRING("STRING", 16, TPrimitiveType.STRING),
     // Unsupported scalar types.
     BINARY("BINARY", -1, TPrimitiveType.BINARY),
@@ -297,7 +297,7 @@ public enum PrimitiveType {
         // QUANTILE_STATE
         builder.put(QUANTILE_STATE, QUANTILE_STATE);
 
-        //TIME
+        // TIME
         builder.put(TIME, TIME);
         builder.put(TIME, DOUBLE);
 
@@ -353,9 +353,11 @@ public enum PrimitiveType {
     public static ArrayList<PrimitiveType> getIntegerTypes() {
         return integerTypes;
     }
+
     public static ArrayList<PrimitiveType> getNumericTypes() {
         return numericTypes;
     }
+
     public static ArrayList<PrimitiveType> getSupportedTypes() {
         return supportedTypes;
     }
@@ -400,8 +402,10 @@ public enum PrimitiveType {
         compatibilityMatrix[NULL_TYPE.ordinal()][STRING.ordinal()] = STRING;
         compatibilityMatrix[NULL_TYPE.ordinal()][DECIMALV2.ordinal()] = DECIMALV2;
         compatibilityMatrix[NULL_TYPE.ordinal()][TIME.ordinal()] = TIME;
-        compatibilityMatrix[NULL_TYPE.ordinal()][BITMAP.ordinal()] = BITMAP;    //TODO(weixiang): bitmap can be null?
-        compatibilityMatrix[NULL_TYPE.ordinal()][QUANTILE_STATE.ordinal()] = QUANTILE_STATE;   //TODO(weixiang): QUANTILE_STATE can be null?
+        //TODO(weixiang): bitmap can be null?
+        compatibilityMatrix[NULL_TYPE.ordinal()][BITMAP.ordinal()] = BITMAP;
+        //TODO(weixiang): QUANTILE_STATE can be null?
+        compatibilityMatrix[NULL_TYPE.ordinal()][QUANTILE_STATE.ordinal()] = QUANTILE_STATE;
 
         compatibilityMatrix[BOOLEAN.ordinal()][BOOLEAN.ordinal()] = BOOLEAN;
         compatibilityMatrix[BOOLEAN.ordinal()][TINYINT.ordinal()] = TINYINT;
@@ -715,7 +719,7 @@ public enum PrimitiveType {
         return (this == DATE || this == DATETIME);
     }
 
-    public boolean isArrayType(){
+    public boolean isArrayType() {
         return this == ARRAY;
     }
 

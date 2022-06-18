@@ -171,36 +171,37 @@ public class SparkRepository {
             }
             String srcFilePath = null;
             // upload dpp
-            {
+            { // CHECKSTYLE IGNORE THIS LINE
                 // 1. upload dpp
                 srcFilePath = localDppPath;
                 String fileName = getFileName(PATH_DELIMITER, srcFilePath);
-                String origFilePath = remoteArchivePath + PATH_DELIMITER +
-                        assemblyFileName(PREFIX_LIB, "", fileName, "");
+                String origFilePath = remoteArchivePath + PATH_DELIMITER
+                        + assemblyFileName(PREFIX_LIB, "", fileName, "");
                 upload(srcFilePath, origFilePath);
                 // 2. rename dpp
                 String md5sum = getMd5String(srcFilePath);
                 long size = getFileSize(srcFilePath);
-                String destFilePath = remoteArchivePath + PATH_DELIMITER +
-                        assemblyFileName(PREFIX_LIB, md5sum, fileName, "");
+                String destFilePath = remoteArchivePath + PATH_DELIMITER
+                        + assemblyFileName(PREFIX_LIB, md5sum, fileName, "");
                 rename(origFilePath, destFilePath);
                 currentArchive.libraries.add(new SparkLibrary(destFilePath, md5sum, SparkLibrary.LibType.DPP, size));
-            }
+            } // CHECKSTYLE IGNORE THIS LINE
             // upload spark2x
-            {
+            { // CHECKSTYLE IGNORE THIS LINE
                 // 1. upload spark2x
                 srcFilePath = localSpark2xPath;
-                String origFilePath = remoteArchivePath + PATH_DELIMITER +
-                        assemblyFileName(PREFIX_LIB, "", SPARK_2X, ".zip");
+                String origFilePath = remoteArchivePath + PATH_DELIMITER
+                        + assemblyFileName(PREFIX_LIB, "", SPARK_2X, ".zip");
                 upload(srcFilePath, origFilePath);
                 // 2. rename spark2x
                 String md5sum = getMd5String(srcFilePath);
                 long size = getFileSize(srcFilePath);
-                String destFilePath = remoteArchivePath + PATH_DELIMITER +
-                        assemblyFileName(PREFIX_LIB, md5sum, SPARK_2X, ".zip");
+                String destFilePath = remoteArchivePath + PATH_DELIMITER
+                        + assemblyFileName(PREFIX_LIB, md5sum, SPARK_2X, ".zip");
                 rename(origFilePath, destFilePath);
-                currentArchive.libraries.add(new SparkLibrary(destFilePath, md5sum, SparkLibrary.LibType.SPARK2X, size));
-            }
+                currentArchive.libraries.add(new SparkLibrary(
+                        destFilePath, md5sum, SparkLibrary.LibType.SPARK2X, size));
+            } // CHECKSTYLE IGNORE THIS LINE
             LOG.info("finished to upload archive to repository, currentDppVersion={}, path={}",
                     currentDppVersion, remoteArchivePath);
         } catch (UserException e) {
@@ -275,11 +276,11 @@ public class SparkRepository {
 
     private void upload(String srcFilePath, String destFilePath) throws LoadException {
         try {
-            BrokerUtil.writeFile(srcFilePath, destFilePath , brokerDesc);
+            BrokerUtil.writeFile(srcFilePath, destFilePath, brokerDesc);
             LOG.info("finished to upload file, localPath={}, remotePath={}", srcFilePath, destFilePath);
         } catch (UserException e) {
-            throw new LoadException("failed to upload lib to repository, srcPath=" +srcFilePath +
-                    " destPath=" + destFilePath + " message=" + e.getMessage());
+            throw new LoadException("failed to upload lib to repository, srcPath=" + srcFilePath
+                    + " destPath=" + destFilePath + " message=" + e.getMessage());
         }
     }
 
@@ -288,8 +289,8 @@ public class SparkRepository {
             BrokerUtil.rename(origFilePath, destFilePath, brokerDesc);
             LOG.info("finished to rename file, originPath={}, destPath={}", origFilePath, destFilePath);
         } catch (UserException e) {
-            throw new LoadException("failed to rename file from " + origFilePath + " to " + destFilePath +
-                    ", message=" + e.getMessage());
+            throw new LoadException("failed to rename file from " + origFilePath + " to " + destFilePath
+                    + ", message=" + e.getMessage());
         }
     }
 
@@ -342,8 +343,8 @@ public class SparkRepository {
 
         public SparkLibrary getDppLibrary() {
             SparkLibrary result = null;
-            Optional<SparkLibrary> library = libraries.stream().
-                    filter(lib -> lib.libType == SparkLibrary.LibType.DPP).findFirst();
+            Optional<SparkLibrary> library = libraries.stream()
+                    .filter(lib -> lib.libType == SparkLibrary.LibType.DPP).findFirst();
             if (library.isPresent()) {
                 result = library.get();
             }
@@ -352,8 +353,8 @@ public class SparkRepository {
 
         public SparkLibrary getSpark2xLibrary() {
             SparkLibrary result = null;
-            Optional<SparkLibrary> library = libraries.stream().
-                    filter(lib -> lib.libType == SparkLibrary.LibType.SPARK2X).findFirst();
+            Optional<SparkLibrary> library = libraries.stream()
+                    .filter(lib -> lib.libType == SparkLibrary.LibType.SPARK2X).findFirst();
             if (library.isPresent()) {
                 result = library.get();
             }

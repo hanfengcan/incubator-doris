@@ -51,9 +51,11 @@ public class Util {
 
     private static final long DEFAULT_EXEC_CMD_TIMEOUT_MS = 600000L;
 
-    private static final String[] ORDINAL_SUFFIX = new String[] { "th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th" };
+    private static final String[] ORDINAL_SUFFIX
+            = new String[] { "th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th" };
 
-    private static final List<String> REGEX_ESCAPES = Lists.newArrayList("\\", "$", "(", ")", "*", "+", ".", "[", "]", "?", "^", "{", "}", "|");
+    private static final List<String> REGEX_ESCAPES
+            = Lists.newArrayList("\\", "$", "(", ")", "*", "+", ".", "[", "]", "?", "^", "{", "}", "|");
 
     static {
         TYPE_STRING_MAP.put(PrimitiveType.TINYINT, "tinyint(4)");
@@ -72,7 +74,7 @@ public class Util {
         TYPE_STRING_MAP.put(PrimitiveType.HLL, "varchar(%d)");
         TYPE_STRING_MAP.put(PrimitiveType.BOOLEAN, "bool");
         TYPE_STRING_MAP.put(PrimitiveType.BITMAP, "bitmap");
-        TYPE_STRING_MAP.put(PrimitiveType.QUANTILE_STATE,"quantile_state");
+        TYPE_STRING_MAP.put(PrimitiveType.QUANTILE_STATE, "quantile_state");
         TYPE_STRING_MAP.put(PrimitiveType.ARRAY, "Array<%s>");
         TYPE_STRING_MAP.put(PrimitiveType.NULL_TYPE, "null");
     }
@@ -187,8 +189,8 @@ public class Util {
         boolean escaping = false;
         char quoteChar = ' ';
         boolean quoting = false;
-        StringBuilder current = new StringBuilder() ;
-        for (int i = 0; i<string.length(); i++) {
+        StringBuilder current = new StringBuilder();
+        for (int i = 0; i < string.length(); i++) {
             char c = string.charAt(i);
             if (escaping) {
                 current.append(c);
@@ -391,7 +393,7 @@ public class Util {
         short B = 128; // CHECKSTYLE IGNORE THIS LINE
 
         while (source > B) {
-            out.write((int)(source & (B - 1) | B));
+            out.write((int) (source & (B - 1) | B));
             source = source >> 7;
         }
         out.write((int) (source & (B - 1)));
@@ -406,7 +408,7 @@ public class Util {
         while (true) {
             int oneByte = in.readUnsignedByte();
             boolean isEnd = (oneByte & B) == 0;
-            result = result | ((long)(oneByte & B - 1) << (shift * 7));
+            result = result | ((long) (oneByte & B - 1) << (shift * 7));
             if (isEnd) {
                 break;
             }

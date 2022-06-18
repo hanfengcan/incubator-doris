@@ -175,7 +175,7 @@ public class SingleNodePlanner {
      * they are never unnested, and therefore the corresponding parent scan should not
      * materialize them.
      */
-    private PlanNode createEmptyNode(PlanNode inputPlan, QueryStmt stmt, Analyzer analyzer) {
+    private PlanNode createEmptyNode(PlanNode inputPlan, QueryStmt stmt, Analyzer analyzer) throws UserException {
         ArrayList<TupleId> tupleIds = Lists.newArrayList();
         if (inputPlan != null) {
             tupleIds = inputPlan.tupleIds;
@@ -1165,7 +1165,7 @@ public class SingleNodePlanner {
      * Returns a MergeNode that materializes the exprs of the constant selectStmt. Replaces the resultExprs of the
      * selectStmt with SlotRefs into the materialized tuple.
      */
-    private PlanNode createConstantSelectPlan(SelectStmt selectStmt, Analyzer analyzer) {
+    private PlanNode createConstantSelectPlan(SelectStmt selectStmt, Analyzer analyzer) throws UserException {
         Preconditions.checkState(selectStmt.getTableRefs().isEmpty());
         ArrayList<Expr> resultExprs = selectStmt.getResultExprs();
         // Create tuple descriptor for materialized tuple.
@@ -1378,12 +1378,21 @@ public class SingleNodePlanner {
             rootNode.setWithoutTupleIsNullOutputSmap(outputSmap);
             // Exprs against non-matched rows of an outer join should always return NULL.
             // Make the rhs exprs of the output smap nullable, if necessary. This expr wrapping
-            // must be performed on the composed smap, and not on the the inline view's smap,
+            // must be performed on the composed smap, and not on the inline view's smap,
             // because the rhs exprs must first be resolved against the physical output of
             // 'planRoot' to correctly determine whether wrapping is necessary.
             List<Expr> nullableRhs = TupleIsNullPredicate.wrapExprs(
                     outputSmap.getRhs(), rootNode.getTupleIds(), analyzer);
             outputSmap = new ExprSubstitutionMap(outputSmap.getLhs(), nullableRhs);
+            // When we process outer join with inline views, we set slot descriptor of inline view to nullable firstly.
+            // When we generate plan, we remove inline view, so the upper node's input is inline view's child.
+            // So we need to set slot descriptor of inline view's child to nullable to ensure consistent behavior
+            // with BaseTable.
+            for (TupleId tupleId : rootNode.getTupleIds()) {
+                for (SlotDescriptor slotDescriptor : analyzer.getTupleDesc(tupleId).getMaterializedSlots()) {
+                    slotDescriptor.setIsNullable(true);
+                }
+            }
         }
         // Set output smap of rootNode *before* creating a SelectNode for proper resolution.
         rootNode.setOutputSmap(outputSmap);
@@ -1708,10 +1717,17 @@ public class SingleNodePlanner {
                 scanNode = new IcebergScanNode(ctx.getNextNodeId(), tblRef.getDesc(), "IcebergScanNode",
                         null, -1);
                 break;
+            case HUDI:
+                scanNode = new HudiScanNode(ctx.getNextNodeId(), tblRef.getDesc(), "HudiScanNode",
+                        null, -1);
+                break;
             default:
                 break;
         }
         if (scanNode instanceof OlapScanNode || scanNode instanceof EsScanNode || scanNode instanceof HiveScanNode) {
+            if (analyzer.enableInferPredicate()) {
+                PredicatePushDown.visitScanNode(scanNode, tblRef.getJoinOp(), analyzer);
+            }
             scanNode.setSortColumn(tblRef.getSortColumn());
         }
 
@@ -2002,7 +2018,8 @@ public class SingleNodePlanner {
      * TODO: Simplify the plan of unions with only a single non-empty operand to not
      * use a union node (this is tricky because a union materializes a new tuple).
      */
-    private PlanNode createSetOperationPlan(SetOperationStmt setOperationStmt, Analyzer analyzer, long defaultOrderByLimit)
+    private PlanNode createSetOperationPlan(
+            SetOperationStmt setOperationStmt, Analyzer analyzer, long defaultOrderByLimit)
             throws UserException, AnalysisException {
         // TODO(zc): get unassigned conjuncts
         // List<Expr> conjuncts =

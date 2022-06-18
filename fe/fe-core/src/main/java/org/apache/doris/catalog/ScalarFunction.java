@@ -70,7 +70,8 @@ public class ScalarFunction extends Function {
 
     public ScalarFunction(FunctionName fnName, List<Type> argTypes, Type retType, boolean hasVarArgs,
                           TFunctionBinaryType binaryType, boolean userVisible, boolean isVec) {
-        super(0, fnName, argTypes, retType, hasVarArgs, binaryType, userVisible, isVec, NullableMode.DEPEND_ON_ARGUMENT);
+        super(0, fnName, argTypes, retType, hasVarArgs, binaryType, userVisible, isVec,
+                NullableMode.DEPEND_ON_ARGUMENT);
     }
 
     public ScalarFunction(FunctionName fnName, List<Type> argTypes,
@@ -271,16 +272,6 @@ public class ScalarFunction extends Function {
                 new FunctionName(name), argTypes, retType, hasVarArgs, userVisible);
         fn.symbolName = symbol;
         fn.nullableMode = nullableMode;
-
-//        try {
-//            fn.symbolName_ = fn.lookupSymbol(symbol, TSymbolType.UDF_EVALUATE, null,
-//                    fn.hasVarArgs(), fn.getArgs());
-//        } catch (AnalysisException e) {
-//            // This should never happen
-//            Preconditions.checkState(false, "Builtin symbol '" + symbol + "'" + argTypes
-//                    + " not found!" + e.getStackTrace());
-//            throw new RuntimeException("Builtin symbol not found!", e);
-//        }
         return fn;
     }
 
@@ -333,13 +324,29 @@ public class ScalarFunction extends Function {
         return fn;
     }
 
-    public void setSymbolName(String s) { symbolName = s; }
-    public void setPrepareFnSymbol(String s) { prepareFnSymbol = s; }
-    public void setCloseFnSymbol(String s) { closeFnSymbol = s; }
+    public void setSymbolName(String s) {
+        symbolName = s;
+    }
 
-    public String getSymbolName() { return symbolName; }
-    public String getPrepareFnSymbol() { return prepareFnSymbol; }
-    public String getCloseFnSymbol() { return closeFnSymbol; }
+    public void setPrepareFnSymbol(String s) {
+        prepareFnSymbol = s;
+    }
+
+    public void setCloseFnSymbol(String s) {
+        closeFnSymbol = s;
+    }
+
+    public String getSymbolName() {
+        return symbolName;
+    }
+
+    public String getPrepareFnSymbol() {
+        return prepareFnSymbol;
+    }
+
+    public String getCloseFnSymbol() {
+        return closeFnSymbol;
+    }
 
     @Override
     public String toSql(boolean ifNotExists) {

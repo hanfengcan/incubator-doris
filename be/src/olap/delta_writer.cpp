@@ -17,6 +17,8 @@
 
 #include "olap/delta_writer.h"
 
+#include "olap/base_compaction.h"
+#include "olap/cumulative_compaction.h"
 #include "olap/data_dir.h"
 #include "olap/memtable.h"
 #include "olap/memtable_flush_executor.h"
@@ -98,6 +100,10 @@ Status DeltaWriter::init() {
             MemTracker::create_tracker(-1, "DeltaWriter:" + std::to_string(_tablet->tablet_id()));
     // check tablet version number
     if (_tablet->version_count() > config::max_tablet_version_num) {
+        //trigger quick compaction
+        if (config::enable_quick_compaction) {
+            StorageEngine::instance()->submit_quick_compaction_task(_tablet);
+        }
         LOG(WARNING) << "failed to init delta writer. version count: " << _tablet->version_count()
                      << ", exceed limit: " << config::max_tablet_version_num
                      << ". tablet: " << _tablet->full_name();
@@ -190,22 +196,14 @@ Status DeltaWriter::write(const vectorized::Block* block, const std::vector<int>
         return Status::OLAPInternalError(OLAP_ERR_ALREADY_CANCELLED);
     }
 
-    int start = 0, end = 0;
-    const size_t num_rows = row_idxs.size();
-    for (; start < num_rows;) {
-        auto count = end + 1 - start;
-        if (end == num_rows - 1 || (row_idxs[end + 1] - row_idxs[start]) != count) {
-            _mem_table->insert(block, row_idxs[start], count);
-            start += count;
-            end = start;
-        } else {
-            end++;
-        }
-    }
+    _mem_table->insert(block, row_idxs);
 
-    if (_mem_table->memory_usage() >= config::write_buffer_size) {
-        RETURN_NOT_OK(_flush_memtable_async());
-        _reset_mem_table();
+    if (_mem_table->need_to_agg()) {
+        _mem_table->shrink_memtable_by_agg();
+        if (_mem_table->is_flush()) {
+            RETURN_NOT_OK(_flush_memtable_async());
+            _reset_mem_table();
+        }
     }
 
     return Status::OK();
@@ -291,9 +289,7 @@ Status DeltaWriter::close() {
     return Status::OK();
 }
 
-Status DeltaWriter::close_wait(google::protobuf::RepeatedPtrField<PTabletInfo>* tablet_vec,
-                               google::protobuf::RepeatedPtrField<PTabletError>* tablet_errors,
-                               bool is_broken) {
+Status DeltaWriter::close_wait() {
     std::lock_guard<std::mutex> l(_lock);
     DCHECK(_is_init)
             << "delta writer is supposed be to initialized before close_wait() being called";
@@ -303,15 +299,7 @@ Status DeltaWriter::close_wait(google::protobuf::RepeatedPtrField<PTabletInfo>* 
     }
 
     // return error if previous flush failed
-    Status s = _flush_token->wait();
-    if (!s.ok()) {
-#ifndef BE_TEST
-        PTabletError* tablet_error = tablet_errors->Add();
-        tablet_error->set_tablet_id(_tablet->tablet_id());
-        tablet_error->set_msg(s.get_error_msg());
-#endif
-        return s;
-    }
+    RETURN_NOT_OK(_flush_token->wait());
 
     // use rowset meta manager to save meta
     _cur_rowset = _rowset_writer->build();
@@ -326,14 +314,6 @@ Status DeltaWriter::close_wait(google::protobuf::RepeatedPtrField<PTabletInfo>* 
                      << " for rowset: " << _cur_rowset->rowset_id();
         return res;
     }
-
-#ifndef BE_TEST
-    if (!is_broken) {
-        PTabletInfo* tablet_info = tablet_vec->Add();
-        tablet_info->set_tablet_id(_tablet->tablet_id());
-        tablet_info->set_schema_hash(_tablet->schema_hash());
-    }
-#endif
 
     _delta_written_success = true;
 

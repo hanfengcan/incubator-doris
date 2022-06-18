@@ -23,6 +23,7 @@ import org.apache.doris.nereids.DorisParser.BooleanLiteralContext;
 import org.apache.doris.nereids.DorisParser.ColumnReferenceContext;
 import org.apache.doris.nereids.DorisParser.ComparisonContext;
 import org.apache.doris.nereids.DorisParser.DereferenceContext;
+import org.apache.doris.nereids.DorisParser.ExpressionContext;
 import org.apache.doris.nereids.DorisParser.FromClauseContext;
 import org.apache.doris.nereids.DorisParser.IdentifierListContext;
 import org.apache.doris.nereids.DorisParser.IdentifierSeqContext;
@@ -32,6 +33,7 @@ import org.apache.doris.nereids.DorisParser.JoinRelationContext;
 import org.apache.doris.nereids.DorisParser.MultipartIdentifierContext;
 import org.apache.doris.nereids.DorisParser.NamedExpressionContext;
 import org.apache.doris.nereids.DorisParser.NamedExpressionSeqContext;
+import org.apache.doris.nereids.DorisParser.NotContext;
 import org.apache.doris.nereids.DorisParser.NullLiteralContext;
 import org.apache.doris.nereids.DorisParser.PredicatedContext;
 import org.apache.doris.nereids.DorisParser.QualifiedNameContext;
@@ -49,6 +51,10 @@ import org.apache.doris.nereids.analyzer.UnboundAlias;
 import org.apache.doris.nereids.analyzer.UnboundRelation;
 import org.apache.doris.nereids.analyzer.UnboundSlot;
 import org.apache.doris.nereids.analyzer.UnboundStar;
+import org.apache.doris.nereids.operators.plans.JoinType;
+import org.apache.doris.nereids.operators.plans.logical.LogicalFilter;
+import org.apache.doris.nereids.operators.plans.logical.LogicalJoin;
+import org.apache.doris.nereids.operators.plans.logical.LogicalProject;
 import org.apache.doris.nereids.trees.expressions.Alias;
 import org.apache.doris.nereids.trees.expressions.EqualTo;
 import org.apache.doris.nereids.trees.expressions.Expression;
@@ -60,11 +66,10 @@ import org.apache.doris.nereids.trees.expressions.Literal;
 import org.apache.doris.nereids.trees.expressions.NamedExpression;
 import org.apache.doris.nereids.trees.expressions.Not;
 import org.apache.doris.nereids.trees.expressions.NullSafeEqual;
-import org.apache.doris.nereids.trees.plans.JoinType;
-import org.apache.doris.nereids.trees.plans.logical.LogicalFilter;
-import org.apache.doris.nereids.trees.plans.logical.LogicalJoin;
+import org.apache.doris.nereids.trees.plans.logical.LogicalBinaryPlan;
+import org.apache.doris.nereids.trees.plans.logical.LogicalLeafPlan;
 import org.apache.doris.nereids.trees.plans.logical.LogicalPlan;
-import org.apache.doris.nereids.trees.plans.logical.LogicalProject;
+import org.apache.doris.nereids.trees.plans.logical.LogicalUnaryPlan;
 
 import com.google.common.collect.Lists;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -75,6 +80,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -89,7 +95,7 @@ public class LogicalPlanBuilder extends DorisParserBaseVisitor<Object> {
      */
     private final BiFunction<WhereClauseContext, LogicalPlan, LogicalPlan> withWhereClause =
             (WhereClauseContext ctx, LogicalPlan plan)
-                    -> new LogicalFilter(expression((ctx.booleanExpression())), plan);
+                    -> new LogicalUnaryPlan(new LogicalFilter(expression((ctx.booleanExpression()))), plan);
 
     protected <T> T typedVisit(ParseTree ctx) {
         return (T) ctx.accept(this);
@@ -142,6 +148,12 @@ public class LogicalPlanBuilder extends DorisParserBaseVisitor<Object> {
                     ctx.whereClause(),
                     from);
         };
+        return ParserUtils.withOrigin(ctx, f);
+    }
+
+    @Override
+    public Expression visitExpression(ExpressionContext ctx) {
+        Supplier<Expression> f = () -> (Expression) visit(ctx.booleanExpression());
         return ParserUtils.withOrigin(ctx, f);
     }
 
@@ -201,7 +213,7 @@ public class LogicalPlanBuilder extends DorisParserBaseVisitor<Object> {
 
         LogicalPlan withProject;
         if (CollectionUtils.isNotEmpty(namedExpressions)) {
-            withProject = new LogicalProject(namedExpressions, withFilter);
+            withProject = new LogicalUnaryPlan(new LogicalProject(namedExpressions), withFilter);
         } else {
             withProject = withFilter;
         }
@@ -217,7 +229,8 @@ public class LogicalPlanBuilder extends DorisParserBaseVisitor<Object> {
             if (left == null) {
                 left = right;
             } else {
-                left = new LogicalJoin(JoinType.INNER_JOIN, null, left, right);
+                left = new LogicalBinaryPlan(
+                        new LogicalJoin(JoinType.INNER_JOIN, Optional.empty()), left, right);
             }
             left = withJoinRelations(left, relation);
         }
@@ -257,7 +270,10 @@ public class LogicalPlanBuilder extends DorisParserBaseVisitor<Object> {
                 condition = expression(joinCriteria.booleanExpression());
             }
 
-            last = new LogicalJoin(joinType, condition, last, plan(join.relationPrimary()));
+            last = new LogicalBinaryPlan(
+                    new LogicalJoin(joinType, Optional.ofNullable(condition)),
+                    last, plan(join.relationPrimary())
+            );
         }
         return last;
     }
@@ -270,7 +286,7 @@ public class LogicalPlanBuilder extends DorisParserBaseVisitor<Object> {
         List<String> tableId = visitMultipartIdentifier(ctx.multipartIdentifier());
         UnboundRelation relation = new UnboundRelation(tableId);
         // TODO: sample and time travel, alias, sub query
-        return relation;
+        return new LogicalLeafPlan(relation);
     }
 
     /**
@@ -378,6 +394,19 @@ public class LogicalPlanBuilder extends DorisParserBaseVisitor<Object> {
             default:
                 return null;
         }
+    }
+
+    /**
+     * Create a not expression.
+     * format: NOT Expression
+     * for example:
+     * not 1
+     * not 1=1
+     */
+    @Override
+    public Expression visitNot(NotContext ctx) {
+        Expression child = expression(ctx.booleanExpression());
+        return new Not(child);
     }
 
     /**
